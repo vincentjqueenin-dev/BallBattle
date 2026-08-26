@@ -13,9 +13,10 @@ MonoBehaviour:
   m_Name: Bow Ball
   m_EditorClassIdentifier: Assembly-CSharp::BallData
   ballName: Bow Ball
-  maxHealth: 90
+  maxHealth: 100
   minDamage: 4
   maxDamage: 4
   knockbackForce: 3
   launchSpeed: 10
+  maxSpeed: 12
   ballColor: {r: 0.514151, g: 1, b: 0.5386366, a: 1}

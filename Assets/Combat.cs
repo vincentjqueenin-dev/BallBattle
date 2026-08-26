@@ -10,8 +10,9 @@ public class Combat : MonoBehaviour
     public float currentHealth;
     [HideInInspector] public bool isDead = false;
 
-    [Header("UI Reference")]
-    public TMP_Text healthText;
+    [Header("UI & HUD References")]
+    public TMP_Text healthText;   // Text on the ball
+    public TMP_Text debugHudText; // On-screen HUD text detailing stats/passive
 
     [Header("Weapon Type Flags")]
     public bool isUnarmed = false;
@@ -23,23 +24,24 @@ public class Combat : MonoBehaviour
     public GameObject swordVisual;
     public GameObject bowVisual;
     public Transform firePoint;
-    public float swordRotationSpeed = 360f;
+    public float rotationSpeed = 200f;
+    private float rotationDirection = 1f; // Controls clockwise / counter-clockwise
 
     [Header("Sword Passive Settings")]
-    private float swordMultiplier = 2.0f;
-    private const float MIN_SWORD_MULT = 1.1f;
-    private const float MULT_DECAY = 0.05f;
+    private float swordBonusPercent = 0.50f; // Starts at +50%
+    private const float MIN_BONUS = 0.05f;   // Lower bound +5%
+    private const float DECAY = 0.05f;       // Drops by 5% per hit
 
     [Header("Bow Passive Settings")]
     public GameObject arrowPrefab;
     public int currentArrowCount = 3;
     private int hitsThisVolley = 0;
-    private const float VOLLEY_DURATION = 3.0f;
+    private const float BURST_SHOT_DELAY = 0.1f;
+    private const float VOLLEY_COOLDOWN = 0.8f;
     private bool isFiringBow = false;
 
     private Rigidbody2D rb;
     private SpriteRenderer sr;
-    private Combat enemyTarget;
     private static bool gameEnding = false;
 
     private void Awake()
@@ -51,29 +53,49 @@ public class Combat : MonoBehaviour
 
     private void Start()
     {
-        if (data != null && currentHealth <= 0)
+        if (data != null && currentHealth <= 0) currentHealth = data.maxHealth;
+
+        if (isSword)
         {
-            currentHealth = data.maxHealth;
+            rotationSpeed = Random.Range(150f, 280f);
         }
+
         UpdateUI();
-        FindEnemyTarget();
     }
 
     private void Update()
     {
-        // 1. Rotate sword continuously
-        if (isSword && weaponPivot != null)
+        // Weapon Rotation incorporating current direction multiplier
+        if ((isSword || isBow) && weaponPivot != null)
         {
-            weaponPivot.Rotate(0, 0, swordRotationSpeed * Time.deltaTime);
+            weaponPivot.Rotate(0, 0, rotationSpeed * rotationDirection * Time.deltaTime);
         }
 
-        // 2. Aim bow towards opponent
-        if (isBow && weaponPivot != null && enemyTarget != null && !enemyTarget.isDead)
+        // Bow Rapid Burst Loop
+        if (isBow && !isFiringBow && !isDead)
         {
-            Vector2 dir = (enemyTarget.transform.position - transform.position).normalized;
-            float angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
-            weaponPivot.rotation = Quaternion.AngleAxis(angle, Vector3.forward);
+            StartCoroutine(FireBowBurstRoutine());
         }
+
+        UpdateUI();
+    }
+
+    private void FixedUpdate()
+    {
+        // Apply Speed Limit / Velocity Cap
+        if (rb != null && data != null && data.maxSpeed > 0)
+        {
+            if (rb.linearVelocity.magnitude > data.maxSpeed)
+            {
+                rb.linearVelocity = rb.linearVelocity.normalized * data.maxSpeed;
+            }
+        }
+    }
+
+    // Called by SwordWeapon upon hitting another weapon/arrow
+    public void ReverseRotation()
+    {
+        rotationDirection *= -1f;
     }
 
     public void ApplyData(BallData newData)
@@ -83,13 +105,11 @@ public class Combat : MonoBehaviour
         data = newData;
         currentHealth = data.maxHealth;
 
-        // Inside ApplyData() in Combat.cs
         string bName = data.ballName.Trim().ToLower();
         isSword = bName.Contains("sword");
         isBow = bName.Contains("bow");
         isUnarmed = !isSword && !isBow;
 
-        // Automatically toggle visible graphics
         if (swordVisual != null) swordVisual.SetActive(isSword);
         if (bowVisual != null) bowVisual.SetActive(isBow);
 
@@ -101,18 +121,89 @@ public class Combat : MonoBehaviour
             rb.linearVelocity = randomDir * data.launchSpeed;
         }
 
+        if (isSword)
+        {
+            rotationSpeed = Random.Range(150f, 280f);
+        }
+
         UpdateUI();
     }
 
-    private void FindEnemyTarget()
+    public float CalculateSwordDamage()
     {
-        Combat[] fighters = Object.FindObjectsByType<Combat>(FindObjectsInactive.Exclude);
-        foreach (var fighter in fighters)
+        // Falls back to 1f if minDamage isn't set on BallData
+        float minDmg = (data != null) ? data.minDamage : 1f;
+        float maxDmg = (data != null) ? data.maxDamage : 25f;
+
+        float baseDamage = Random.Range(minDmg, maxDmg);
+        float finalDamage = baseDamage * (1f + swordBonusPercent);
+
+        swordBonusPercent = Mathf.Max(MIN_BONUS, swordBonusPercent - DECAY);
+        return finalDamage;
+    }
+
+    private IEnumerator FireBowBurstRoutine()
+    {
+        isFiringBow = true;
+        int arrowsToFire = currentArrowCount;
+
+        for (int i = 0; i < arrowsToFire; i++)
         {
-            if (fighter != this)
+            if (isDead) yield break;
+
+            if (arrowPrefab != null)
             {
-                enemyTarget = fighter;
-                break;
+                Vector3 spawnPos = (firePoint != null) ? firePoint.position : transform.position;
+                Vector2 fireDirection = (firePoint != null) ? (firePoint.position - transform.position).normalized : transform.up;
+                float angle = Mathf.Atan2(fireDirection.y, fireDirection.x) * Mathf.Rad2Deg;
+
+                GameObject arrowObj = Instantiate(arrowPrefab, spawnPos, Quaternion.Euler(0, 0, angle));
+                Arrow arrow = arrowObj.GetComponent<Arrow>();
+                if (arrow != null) arrow.owner = this;
+
+                Rigidbody2D arrowRb = arrowObj.GetComponent<Rigidbody2D>();
+                if (arrowRb != null)
+                {
+                    arrowRb.bodyType = RigidbodyType2D.Dynamic;
+                    arrowRb.gravityScale = 0f;
+                    arrowRb.linearVelocity = fireDirection * 16f;
+                }
+            }
+
+            yield return new WaitForSeconds(BURST_SHOT_DELAY);
+        }
+
+        currentArrowCount += hitsThisVolley;
+        hitsThisVolley = 0;
+
+        yield return new WaitForSeconds(VOLLEY_COOLDOWN);
+        isFiringBow = false;
+    }
+
+    public void RegisterArrowHit()
+    {
+        hitsThisVolley++;
+    }
+
+    private void OnCollisionEnter2D(Collision2D collision)
+    {
+        Combat target = collision.gameObject.GetComponent<Combat>();
+
+        if (target != null && data != null)
+        {
+            if (isUnarmed && rb != null)
+            {
+                float baseDamage = Random.Range(data.minDamage, data.maxDamage);
+                float currentSpeed = rb.linearVelocity.magnitude;
+                float finalDamage = baseDamage + (currentSpeed * 0.8f);
+                target.TakeDamage(finalDamage);
+            }
+
+            Rigidbody2D targetRb = collision.gameObject.GetComponent<Rigidbody2D>();
+            if (targetRb != null)
+            {
+                Vector2 pushDir = (collision.transform.position - transform.position).normalized;
+                targetRb.AddForce(pushDir * data.knockbackForce, ForceMode2D.Impulse);
             }
         }
     }
@@ -120,16 +211,11 @@ public class Combat : MonoBehaviour
     public void TakeDamage(float amount)
     {
         if (isDead) return;
-
         currentHealth -= amount;
         UpdateUI();
 
         if (sr != null) StartCoroutine(FlashRedRoutine());
-
-        if (currentHealth <= 0)
-        {
-            DieAndCheckWinner();
-        }
+        if (currentHealth <= 0) DieAndCheckWinner();
     }
 
     private IEnumerator FlashRedRoutine()
@@ -146,134 +232,75 @@ public class Combat : MonoBehaviour
         {
             healthText.text = Mathf.Max(0, currentHealth).ToString("F0");
         }
-    }
 
-    private void OnCollisionEnter2D(Collision2D collision)
-    {
-        Combat target = collision.gameObject.GetComponent<Combat>();
-
-        if (target != null && data != null)
+        if (debugHudText != null && data != null)
         {
-            float baseDamage = Random.Range(data.minDamage, data.maxDamage);
-            float finalDamage = baseDamage;
+            string status = $"<b>{data.ballName}</b>\n";
+            status += $"HP: {Mathf.Max(0, currentHealth):F0}/{data.maxHealth:F0}\n";
 
-            if (isUnarmed && rb != null)
+            if (isSword)
             {
-                float currentSpeed = rb.linearVelocity.magnitude;
-                finalDamage = baseDamage + (currentSpeed * 0.8f);
-                finalDamage = Mathf.Min(finalDamage, 35f);
+                status += $"Base Dmg: {data.minDamage}-{data.maxDamage}\n";
+                status += $"Passive: Sword (+{swordBonusPercent * 100f:F0}% bonus dmg)\n";
+                status += $"Speed: {rotationSpeed:F0}°/s";
             }
-            else if (isSword)
+            else if (isBow)
             {
-                finalDamage = baseDamage * swordMultiplier;
-                swordMultiplier = Mathf.Max(MIN_SWORD_MULT, swordMultiplier - MULT_DECAY);
+                status += $"Arrow Dmg: 1\n";
+                status += $"Passive: Bow ({currentArrowCount} arrows/burst)";
+            }
+            else if (isUnarmed)
+            {
+                float spd = rb != null ? rb.linearVelocity.magnitude : 0f;
+                status += $"Base Dmg: {data.minDamage}-{data.maxDamage}\n";
+                status += $"Passive: Unarmed (Spd: {spd:F1} -> Dmg: {data.minDamage + (spd * 0.8f):F1})";
             }
 
-            target.TakeDamage(finalDamage);
-
-            if (isBow && !isFiringBow)
-            {
-                StartCoroutine(FireBowVolleyRoutine(target.transform));
-            }
-
-            Rigidbody2D targetRb = collision.gameObject.GetComponent<Rigidbody2D>();
-            if (targetRb != null)
-            {
-                Vector2 pushDir = (collision.transform.position - transform.position).normalized;
-                targetRb.AddForce(pushDir * data.knockbackForce, ForceMode2D.Impulse);
-            }
+            debugHudText.text = status;
         }
-    }
-
-    private IEnumerator FireBowVolleyRoutine(Transform targetTransform)
-    {
-        isFiringBow = true;
-        float fireDelay = VOLLEY_DURATION / currentArrowCount;
-
-        for (int i = 0; i < currentArrowCount; i++)
-        {
-            if (targetTransform != null && arrowPrefab != null)
-            {
-                Vector3 spawnPos = (firePoint != null) ? firePoint.position : transform.position;
-                Vector2 dir = (targetTransform.position - spawnPos).normalized;
-                float angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
-
-                // Instantiate arrow with proper rotation towards target
-                GameObject arrowObj = Instantiate(arrowPrefab, spawnPos, Quaternion.Euler(0, 0, angle));
-
-                Arrow arrow = arrowObj.GetComponent<Arrow>();
-                if (arrow != null) arrow.owner = this;
-
-                // Apply force directly via Rigidbody2D
-                Rigidbody2D arrowRb = arrowObj.GetComponent<Rigidbody2D>();
-                if (arrowRb != null)
-                {
-                    arrowRb.bodyType = RigidbodyType2D.Dynamic;
-                    arrowRb.gravityScale = 0f; // Keep straight flight trajectory
-                    arrowRb.linearVelocity = dir * 18f; // Fast projectile speed
-                }
-            }
-
-            yield return new WaitForSeconds(fireDelay);
-        }
-
-        currentArrowCount += hitsThisVolley;
-        hitsThisVolley = 0;
-        isFiringBow = false;
-    }
-
-    public void RegisterArrowHit()
-    {
-        hitsThisVolley++;
     }
 
     private void DieAndCheckWinner()
     {
         isDead = true;
 
-        if (gameEnding) return;
-
-        Combat[] fighters = Object.FindObjectsByType<Combat>(FindObjectsInactive.Exclude);
-        Combat winner = null;
-
-        foreach (var fighter in fighters)
-        {
-            if (fighter != this && !fighter.isDead)
-            {
-                winner = fighter;
-                break;
-            }
-        }
-
-        if (winner != null)
+        if (!gameEnding)
         {
             gameEnding = true;
 
-            if (CameraZoom.Instance != null)
+            // Find surviving fighter
+            Combat[] fighters = Object.FindObjectsByType<Combat>(FindObjectsSortMode.None);
+            Combat winner = null;
+
+            foreach (var fighter in fighters)
+            {
+                if (fighter != this && !fighter.isDead)
+                {
+                    winner = fighter;
+                    break;
+                }
+            }
+
+            if (winner != null && CameraZoom.Instance != null)
             {
                 CameraZoom.Instance.ZoomToTarget(winner.transform);
             }
 
-            GameObject transitionRunner = new GameObject("SceneTransitionRunner");
-            transitionRunner.AddComponent<SceneTransitionHelper>().StartReturnSequence();
+            // Create a persistent runner object to execute the scene transition timer
+            GameObject transitionRunner = new GameObject("TransitionRunner");
+            transitionRunner.AddComponent<SceneTransitionRunner>();
         }
 
         gameObject.SetActive(false);
     }
 }
 
-// Top-level class outside of Combat
-public class SceneTransitionHelper : MonoBehaviour
+// Lightweight helper attached dynamically on death to handle menu scene load
+public class SceneTransitionRunner : MonoBehaviour
 {
-    public void StartReturnSequence()
+    private IEnumerator Start()
     {
-        StartCoroutine(ReturnToMenu());
-    }
-
-    private IEnumerator ReturnToMenu()
-    {
-        Time.timeScale = 1f;
-        yield return new WaitForSecondsRealtime(2.5f);
+        yield return new WaitForSeconds(3.0f);
         SceneManager.LoadScene("MenuScene");
     }
 }

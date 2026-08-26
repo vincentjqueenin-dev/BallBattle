@@ -13,9 +13,10 @@ MonoBehaviour:
   m_Name: Sword Ball
   m_EditorClassIdentifier: Assembly-CSharp::BallData
   ballName: Sword Ball
-  maxHealth: 120
-  minDamage: 8
-  maxDamage: 18
+  maxHealth: 100
+  minDamage: 1
+  maxDamage: 20
   knockbackForce: 12
   launchSpeed: 10
+  maxSpeed: 12
   ballColor: {r: 1, g: 0.50675887, b: 0, a: 1}

@@ -14,8 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::BallData
   ballName: Unarmed Ball
   maxHealth: 100
-  minDamage: 10
+  minDamage: 1
   maxDamage: 25
   knockbackForce: 8
   launchSpeed: 10
+  maxSpeed: 20
   ballColor: {r: 1, g: 1, b: 1, a: 1}

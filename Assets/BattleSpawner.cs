@@ -1,10 +1,15 @@
 using UnityEngine;
+using TMPro;
 
 public class BattleSpawner : MonoBehaviour
 {
     public GameObject ballPrefab;
     public Transform spawnPointP1;
     public Transform spawnPointP2;
+
+    [Header("UI HUD References")]
+    public TMP_Text p1PassiveHud;
+    public TMP_Text p2PassiveHud;
 
     [Header("Fallback Default")]
     public BallData defaultBallData;
@@ -16,31 +21,32 @@ public class BattleSpawner : MonoBehaviour
 
         if (MatchManager.Instance != null)
         {
-            if (MatchManager.Instance.player1Data != null)
-                p1Data = MatchManager.Instance.player1Data;
-
-            if (MatchManager.Instance.player2Data != null)
-                p2Data = MatchManager.Instance.player2Data;
+            if (MatchManager.Instance.player1Data != null) p1Data = MatchManager.Instance.player1Data;
+            if (MatchManager.Instance.player2Data != null) p2Data = MatchManager.Instance.player2Data;
         }
 
-        // Spawn Player 1
-        if (ballPrefab != null && spawnPointP1 != null)
+        // Spawn P1 Ball & Assign HUD
+        if (spawnPointP1 != null && ballPrefab != null)
         {
-            GameObject b1 = Instantiate(ballPrefab, spawnPointP1.position, Quaternion.identity);
-            b1.name = "P1_" + (p1Data != null ? p1Data.ballName : "Ball");
-
-            Combat c1 = b1.GetComponent<Combat>();
-            if (c1 != null && p1Data != null) c1.ApplyData(p1Data);
+            GameObject ball1 = Instantiate(ballPrefab, spawnPointP1.position, Quaternion.identity);
+            Combat combat1 = ball1.GetComponent<Combat>();
+            if (combat1 != null)
+            {
+                combat1.debugHudText = p1PassiveHud; // <--- Linked here
+                combat1.ApplyData(p1Data);
+            }
         }
 
-        // Spawn Player 2
-        if (ballPrefab != null && spawnPointP2 != null)
+        // Spawn P2 Ball & Assign HUD
+        if (spawnPointP2 != null && ballPrefab != null)
         {
-            GameObject b2 = Instantiate(ballPrefab, spawnPointP2.position, Quaternion.identity);
-            b2.name = "P2_" + (p2Data != null ? p2Data.ballName : "Ball");
-
-            Combat c2 = b2.GetComponent<Combat>();
-            if (c2 != null && p2Data != null) c2.ApplyData(p2Data);
+            GameObject ball2 = Instantiate(ballPrefab, spawnPointP2.position, Quaternion.identity);
+            Combat combat2 = ball2.GetComponent<Combat>();
+            if (combat2 != null)
+            {
+                combat2.debugHudText = p2PassiveHud; // <--- Linked here
+                combat2.ApplyData(p2Data);
+            }
         }
     }
 }
