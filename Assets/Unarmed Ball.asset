@@ -13,10 +13,11 @@ MonoBehaviour:
   m_Name: Unarmed Ball
   m_EditorClassIdentifier: Assembly-CSharp::BallData
   ballName: Unarmed Ball
+  ballColor: {r: 1, g: 1, b: 1, a: 1}
   maxHealth: 100
   minDamage: 1
   maxDamage: 25
-  knockbackForce: 8
   launchSpeed: 10
   maxSpeed: 20
-  ballColor: {r: 1, g: 1, b: 1, a: 1}
+  knockbackForce: 8
+  classPrefab: {fileID: 6296939714447008328, guid: 2064759ebe2ab654bb25e471efa41077, type: 3}

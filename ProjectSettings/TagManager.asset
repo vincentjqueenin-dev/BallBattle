@@ -5,6 +5,9 @@ TagManager:
   serializedVersion: 3
   tags:
   - Ball
+  - Arrow
+  - Sword
+  - Spear
   layers:
   - Default
   - TransparentFX

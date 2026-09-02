@@ -10,14 +10,14 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 61a6aa1558f02f040808591767ca552c, type: 3}
-  m_Name: Bow Ball
+  m_Name: Spear Ball
   m_EditorClassIdentifier: Assembly-CSharp::BallData
-  ballName: Bow Ball
-  ballColor: {r: 0.514151, g: 1, b: 0.5386366, a: 1}
+  ballName: Spear Ball
+  ballColor: {r: 1, g: 0, b: 0, a: 1}
   maxHealth: 100
-  minDamage: 4
-  maxDamage: 4
+  minDamage: 1
+  maxDamage: 25
   launchSpeed: 10
-  maxSpeed: 12
-  knockbackForce: 3
-  classPrefab: {fileID: 6296939714447008328, guid: 71411f171725d7c4c9550d5045d4bbf9, type: 3}
+  maxSpeed: 15
+  knockbackForce: 5
+  classPrefab: {fileID: 6296939714447008328, guid: 8339f77fad5c31845a652adae31eefbb, type: 3}

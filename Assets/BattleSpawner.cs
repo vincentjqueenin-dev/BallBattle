@@ -3,7 +3,6 @@ using TMPro;
 
 public class BattleSpawner : MonoBehaviour
 {
-    public GameObject ballPrefab;
     public Transform spawnPointP1;
     public Transform spawnPointP2;
 
@@ -11,7 +10,8 @@ public class BattleSpawner : MonoBehaviour
     public TMP_Text p1PassiveHud;
     public TMP_Text p2PassiveHud;
 
-    [Header("Fallback Default")]
+    [Header("Fallback Settings")]
+    public GameObject defaultBallPrefab; // Fallback if classPrefab is unassigned
     public BallData defaultBallData;
 
     void Start()
@@ -25,28 +25,48 @@ public class BattleSpawner : MonoBehaviour
             if (MatchManager.Instance.player2Data != null) p2Data = MatchManager.Instance.player2Data;
         }
 
-        // Spawn P1 Ball & Assign HUD
-        if (spawnPointP1 != null && ballPrefab != null)
+        // Spawn P1 Ball
+        if (spawnPointP1 != null)
         {
-            GameObject ball1 = Instantiate(ballPrefab, spawnPointP1.position, Quaternion.identity);
-            Combat combat1 = ball1.GetComponent<Combat>();
-            if (combat1 != null)
-            {
-                combat1.debugHudText = p1PassiveHud; // <--- Linked here
-                combat1.ApplyData(p1Data);
-            }
+            SpawnAndConfigureBall(spawnPointP1.position, p1Data, p1PassiveHud);
         }
 
-        // Spawn P2 Ball & Assign HUD
-        if (spawnPointP2 != null && ballPrefab != null)
+        // Spawn P2 Ball
+        if (spawnPointP2 != null)
         {
-            GameObject ball2 = Instantiate(ballPrefab, spawnPointP2.position, Quaternion.identity);
-            Combat combat2 = ball2.GetComponent<Combat>();
-            if (combat2 != null)
-            {
-                combat2.debugHudText = p2PassiveHud; // <--- Linked here
-                combat2.ApplyData(p2Data);
-            }
+            SpawnAndConfigureBall(spawnPointP2.position, p2Data, p2PassiveHud);
+        }
+    }
+
+    private void SpawnAndConfigureBall(Vector3 position, BallData data, TMP_Text hudText)
+    {
+        // 1. Try classPrefab first; fall back to defaultBallPrefab if null
+        GameObject prefabToSpawn = null;
+
+        if (data != null && data.classPrefab != null)
+        {
+            prefabToSpawn = data.classPrefab;
+        }
+        else
+        {
+            prefabToSpawn = defaultBallPrefab;
+        }
+
+        // Safety check if both are empty
+        if (prefabToSpawn == null)
+        {
+            Debug.LogError($"[BattleSpawner] Cannot spawn! Both classPrefab on '{data?.name}' and defaultBallPrefab on BattleSpawner are unassigned.");
+            return;
+        }
+
+        // 2. Instantiate and configure
+        GameObject ballObj = Instantiate(prefabToSpawn, position, Quaternion.identity);
+
+        Ball ballComponent = ballObj.GetComponent<Ball>();
+        if (ballComponent != null)
+        {
+            ballComponent.debugHudText = hudText;
+            ballComponent.ApplyData(data);
         }
     }
 }

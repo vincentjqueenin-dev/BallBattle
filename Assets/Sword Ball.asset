@@ -13,10 +13,11 @@ MonoBehaviour:
   m_Name: Sword Ball
   m_EditorClassIdentifier: Assembly-CSharp::BallData
   ballName: Sword Ball
+  ballColor: {r: 1, g: 0.50675887, b: 0, a: 1}
   maxHealth: 100
   minDamage: 1
   maxDamage: 20
-  knockbackForce: 12
   launchSpeed: 10
   maxSpeed: 12
-  ballColor: {r: 1, g: 0.50675887, b: 0, a: 1}
+  knockbackForce: 12
+  classPrefab: {fileID: 6296939714447008328, guid: 4ef5451d41fc8eb428a55d51b84a2f64, type: 3}

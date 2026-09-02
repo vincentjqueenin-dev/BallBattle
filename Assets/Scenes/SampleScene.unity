@@ -1571,11 +1571,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 234abee607083de4090b5a87c5c44650, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BattleSpawner
-  ballPrefab: {fileID: 6296939714447008328, guid: 2064759ebe2ab654bb25e471efa41077, type: 3}
   spawnPointP1: {fileID: 2106542682}
   spawnPointP2: {fileID: 671362961}
   p1PassiveHud: {fileID: 1164214462}
   p2PassiveHud: {fileID: 1010873587}
+  defaultBallPrefab: {fileID: 6296939714447008328, guid: 2064759ebe2ab654bb25e471efa41077, type: 3}
   defaultBallData: {fileID: 11400000, guid: ad126d9891520614c94a5b0442356c03, type: 2}
 --- !u!4 &1881929373
 Transform:

@@ -2,44 +2,69 @@ using UnityEngine;
 
 public class SwordWeapon : MonoBehaviour
 {
-    public Combat parentCombat;
+    public SwordBall parentBall;
+    public Transform weaponPivot;
+
+    [Header("Spin Settings")]
+    public float baseRotationSpeed = 360f; // Faster starting spin speed
+    public float speedScaleFactor = 0.5f;
+    private float rotationDirection = 1f;
 
     private float nextAttackTime = 0f;
     private const float ATTACK_COOLDOWN = 0.5f;
 
+    private void Awake()
+    {
+        if (parentBall == null)
+        {
+            parentBall = GetComponentInParent<SwordBall>();
+        }
+    }
+
+    private void Start()
+    {
+        baseRotationSpeed = Random.Range(320f, 420f); // Fast initial spin
+    }
+
+    private void Update()
+    {
+        if (parentBall == null || parentBall.isDead) return;
+
+        // Dynamically accelerate spin relative to current damage multiplier
+        float currentSpeed = baseRotationSpeed * (1f + (parentBall.currentMultiplier - 1f) * speedScaleFactor);
+
+        if (weaponPivot != null)
+        {
+            weaponPivot.Rotate(0, 0, currentSpeed * rotationDirection * Time.deltaTime);
+        }
+    }
+
+    public void ReverseRotation()
+    {
+        rotationDirection *= -1f;
+    }
+
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        // 1. Clash with another Sword
-        if (collision.CompareTag("Sword"))
+        if (collision.CompareTag("Sword") || collision.CompareTag("Arrow"))
         {
-            if (parentCombat != null) parentCombat.ReverseRotation();
+            ReverseRotation();
             return;
         }
 
-        // 2. Clash with an Arrow
-        if (collision.CompareTag("Arrow"))
-        {
-            if (parentCombat != null) parentCombat.ReverseRotation();
-            return;
-        }
+        Ball target = collision.GetComponent<Ball>();
 
-        // 3. Hit Enemy Ball
-        Combat target = collision.GetComponent<Combat>();
-
-        if (target != null && target != parentCombat)
+        if (target != null && target != parentBall)
         {
-            // Block damage if sword is currently on cooldown
             if (Time.time < nextAttackTime) return;
 
-            if (parentCombat != null)
+            if (parentBall != null)
             {
-                // Trigger rotation reversal on ball hit
-                parentCombat.ReverseRotation();
-
-                // Apply damage & lock attacks for 0.5s
-                float damage = parentCombat.CalculateSwordDamage();
-                target.TakeDamage(damage);
                 nextAttackTime = Time.time + ATTACK_COOLDOWN;
+                ReverseRotation();
+
+                float damage = parentBall.CalculateSwordDamage();
+                target.TakeDamage(damage);
             }
         }
     }
