@@ -248,4 +248,59 @@ public class Ball : MonoBehaviour
         yield return new WaitForSeconds(delay);
         SceneManager.LoadScene("MenuScene");
     }
+
+    public GameObject floatingTextPrefab; // Drag a TMP prefab here (or instantiated dynamically)
+
+    public virtual void TakeDamage(float amount, bool isCrit = false)
+    {
+        currentHealth -= amount;
+
+        // Visual FX: Sprite Flash & Text Pop-up
+        StartCoroutine(FlashSpriteRoutine());
+
+        if (isCrit)
+        {
+            if (CameraShake.Instance != null) CameraShake.Instance.Shake(0.2f, 0.3f);
+            SpawnFloatingText("CRIT! " + Mathf.RoundToInt(amount), Color.yellow);
+        }
+        else
+        {
+            SpawnFloatingText(Mathf.RoundToInt(amount).ToString(), Color.white);
+        }
+
+        UpdateUI();
+
+        if (currentHealth <= 0 && !isDead)
+        {
+            DieAndCheckWinner();
+        }
+    }
+
+    private void SpawnFloatingText(string text, Color color)
+    {
+        GameObject textObj = new GameObject("TextPopUp");
+        textObj.transform.position = transform.position + Vector3.up * 0.8f;
+
+        TMPro.TextMeshPro tmp = textObj.AddComponent<TMPro.TextMeshPro>();
+        tmp.fontSize = 5;
+        tmp.alignment = TMPro.TextAlignmentOptions.Center;
+
+        FloatingText ft = textObj.AddComponent<FloatingText>();
+        ft.textMesh = tmp;
+        ft.Setup(text, color);
+    }
+
+    private IEnumerator FlashSpriteRoutine()
+    {
+        SpriteRenderer[] renderers = GetComponentsInChildren<SpriteRenderer>();
+        foreach (var sr in renderers) sr.color = Color.red;
+        yield return new WaitForSeconds(0.08f);
+        foreach (var sr in renderers) sr.color = (data != null) ? data.ballColor : Color.white;
+    }
+
+    // Standard helper for 5% base crit rolls
+    public bool RollCrit(float chancePercent)
+    {
+        return Random.value <= (chancePercent / 100f);
+    }
 }

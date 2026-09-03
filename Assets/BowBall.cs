@@ -8,7 +8,7 @@ public class BowBall : Ball
 
     protected override void DecideNextState()
     {
-        currentState = (Random.value < 0.7f) ? CombatState.Evasive : CombatState.Defensive;
+        currentState = CombatState.Evasive;
     }
 
     // Dynamic Milestone Damage per Arrow
@@ -45,5 +45,12 @@ public class BowBall : Ball
         status += $"Arrows/Burst: {currentArrowCount}\n";
         status += $"Arrow Dmg: {currentDmg:F0}";
         return status;
+    }
+
+    public float GetCalculatedCritChance()
+    {
+        if (currentArrowCount >= 10) return 20f; // 2nd Milestone
+        if (currentArrowCount >= 5) return 10f; // 1st Milestone
+        return 5f;                               // Base
     }
 }

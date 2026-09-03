@@ -5,8 +5,10 @@ public class Arrow : MonoBehaviour
 {
     [HideInInspector] public Ball owner;
     public float damage = 1f;
+    public bool isCrit = false; // Declared for BowWeapon critical strike hits!
+
     public float slowAmount = 0.5f;   // 50% velocity reduction
-    public float slowDuration = 0.6f; // Holds slow for 0.6s to allow chaining
+    public float slowDuration = 0.6f; // Holds slow for 0.6s
     public float lifeTime = 5f;
 
     private void Start()
@@ -16,7 +18,7 @@ public class Arrow : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        // 1. Check for Arrow vs Arrow clash
+        // 1. Arrow vs Arrow clash
         if (collision.CompareTag("Arrow"))
         {
             Arrow otherArrow = collision.GetComponent<Arrow>();
@@ -39,10 +41,10 @@ public class Arrow : MonoBehaviour
 
         if (target != null && target != owner)
         {
-            // Deal damage first
-            target.TakeDamage(damage);
+            // Deal damage and pass critical status for visual FX & text pop-ups
+            target.TakeDamage(damage, isCrit);
 
-            // FIX: Only start the slow coroutine if the target survived and is still active!
+            // Only apply slow if target survived
             if (target.gameObject.activeInHierarchy && !target.isDead)
             {
                 Rigidbody2D targetRb = target.GetComponent<Rigidbody2D>();

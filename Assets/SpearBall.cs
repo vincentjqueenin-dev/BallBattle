@@ -3,42 +3,35 @@ using UnityEngine;
 public class SpearBall : Ball
 {
     [Header("Spear Scaling Settings")]
-    public float currentDamage = 3f;           // Starting base damage
-    public float currentInterval = 8.0f;       // Starting thrust interval
-    public float baseThrustDamage = 8.0f;      // Fixed damage for the big thrust attack
+    public float currentDamage = 3.0f;
+    public float currentInterval = 8.0f;
+
+    // Base thrust damage lowered from 8.0 to 6.0 to compensate for 25% crit chance
+    public float baseThrustDamage = 6.0f;
 
     private const float MIN_INTERVAL = 0.5f;
 
     protected override void DecideNextState()
     {
-        // Spear is inherently defensive: 70% Defensive (strafing), 30% Evasive
-        currentState = (Random.value < 0.7f) ? CombatState.Defensive : CombatState.Evasive;
+        // Spear focuses heavily on defensive positioning between dash-thrusts
+        currentState = CombatState.Defensive;
     }
 
-    // Called on standard non-thrust hits
     public float RegisterStandardHit()
     {
-        float hitDamage = currentDamage;
-
-        // Scale current damage by +1.1x
-        currentDamage *= 1.1f;
-
-        // Reduce thrust interval by 0.1s
+        currentDamage += 1.1f;
         currentInterval = Mathf.Max(MIN_INTERVAL, currentInterval - 0.1f);
-
-        return hitDamage;
+        UpdateUI();
+        return currentDamage;
     }
 
-    // Called when a heavy thrust lands on the enemy
     public float RegisterThrustHit()
     {
-        // Thrust damage doubles the base thrust damage value
-        float hitDamage = baseThrustDamage * 2.0f;
-
-        // Halve the thrust interval
-        currentInterval = Mathf.Max(MIN_INTERVAL, currentInterval / 2.0f);
-
-        return hitDamage;
+        // Standard Thrust lands 2x base thrust damage
+        float thrustDmg = baseThrustDamage * 2.0f;
+        currentInterval = Mathf.Max(MIN_INTERVAL, currentInterval - 0.5f);
+        UpdateUI();
+        return thrustDmg;
     }
 
     protected override string GetStatusText()
@@ -46,7 +39,7 @@ public class SpearBall : Ball
         string status = $"<b>{data.ballName}</b>\n";
         status += $"HP: {Mathf.Max(0, currentHealth):F0}/{data.maxHealth:F0}\n";
         status += $"State: [{currentState}]\n";
-        status += $"Standard Dmg: {currentDamage:F1}\n";
+        status += $"Std Dmg: {currentDamage:F1}\n";
         status += $"Thrust Cooldown: {currentInterval:F1}s";
         return status;
     }

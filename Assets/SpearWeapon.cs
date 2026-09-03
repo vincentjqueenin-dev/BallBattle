@@ -8,9 +8,9 @@ public class SpearWeapon : MonoBehaviour
 
     [Header("Spin & Dash Settings")]
     public float baseRotationSpeed = 100f;
-    public float dashSpeed = 16f;        // Uniform linear dash speed
-    public float trackSpeed = 8f;        // How fast spear rotates to face target during telegraph
-    public float dashDuration = 0.35f;   // How long the dash travels in a line
+    public float dashSpeed = 16f;        // Uniform linear velocity
+    public float trackSpeed = 8f;        // Target tracking rotation speed
+    public float dashDuration = 0.35f;   // Straight-line dash length
 
     private float rotationDirection = 1f;
     private float nextAttackTime = 0f;
@@ -67,7 +67,7 @@ public class SpearWeapon : MonoBehaviour
 
         if (parentRb != null)
         {
-            // 1. Telegraph & Track Target
+            // 1. Telegraph & Track Target (Points spear directly at enemy while stationary)
             float trackTimer = 0.4f;
             while (trackTimer > 0f)
             {
@@ -76,8 +76,6 @@ public class SpearWeapon : MonoBehaviour
                 parentRb.linearVelocity = Vector2.zero;
 
                 Vector3 dirToTarget = (target.transform.position - parentBall.transform.position).normalized;
-
-                // REMOVED "- 90f" OFFSET: Maps 0 degrees directly to your sprite's tip vector
                 float targetAngle = Mathf.Atan2(dirToTarget.y, dirToTarget.x) * Mathf.Rad2Deg;
 
                 if (weaponPivot != null)
@@ -90,12 +88,12 @@ public class SpearWeapon : MonoBehaviour
                 yield return null;
             }
 
-            // 2. Lock in dash direction directly towards target
-            Vector2 dashDirection = (target != null)
+            // Lock dash direction vector towards target
+            Vector2 dashDirection = (target != null && !target.isDead)
                 ? (Vector2)(target.transform.position - parentBall.transform.position).normalized
                 : (Vector2)weaponPivot.up;
 
-            // 3. Uniform Speed Dash in a Straight Line
+            // 2. Uniform Speed Dash in a Straight Line
             float dashTimer = dashDuration;
             while (dashTimer > 0f)
             {
@@ -104,11 +102,11 @@ public class SpearWeapon : MonoBehaviour
                 yield return null;
             }
 
-            // 4. Stop movement briefly post-dash
+            // 3. Pause briefly post-dash
             parentRb.linearVelocity = Vector2.zero;
             yield return new WaitForSeconds(0.1f);
 
-            // 5. Launch in a random direction to resume normal movement
+            // 4. Launch in a random direction to resume physics bounce
             Vector2 randomLaunch = Random.insideUnitCircle.normalized * (parentBall.data != null ? parentBall.data.launchSpeed : 8f);
             parentRb.linearVelocity = randomLaunch;
         }
@@ -123,12 +121,14 @@ public class SpearWeapon : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
+        // 1. Weapon clash handling
         if (collision.CompareTag("Sword") || collision.CompareTag("Arrow") || collision.CompareTag("Spear"))
         {
             if (!isDashing) ReverseRotation();
             return;
         }
 
+        // 2. Hit Enemy Ball
         Ball target = collision.GetComponent<Ball>();
 
         if (target != null && target != parentBall)
@@ -141,14 +141,22 @@ public class SpearWeapon : MonoBehaviour
 
                 if (isDashing)
                 {
+                    // Dash-Thrust Hit: 25% Crit chance roll
                     float damage = parentBall.RegisterThrustHit();
-                    target.TakeDamage(damage);
+                    bool isCrit = parentBall.RollCrit(25f);
+                    if (isCrit) damage *= 2f;
+
+                    target.TakeDamage(damage, isCrit);
                 }
                 else
                 {
+                    // Standard Hit: 5% Crit chance roll
                     ReverseRotation();
                     float damage = parentBall.RegisterStandardHit();
-                    target.TakeDamage(damage);
+                    bool isCrit = parentBall.RollCrit(5f);
+                    if (isCrit) damage *= 2f;
+
+                    target.TakeDamage(damage, isCrit);
                 }
             }
         }
@@ -156,7 +164,8 @@ public class SpearWeapon : MonoBehaviour
 
     private Ball FindNearestEnemy()
     {
-        Ball[] allBalls = Object.FindObjectsByType<Ball>(FindObjectsSortMode.None);
+        // Updated Unity 6 API call to resolve CS0618 warning
+        Ball[] allBalls = Object.FindObjectsByType<Ball>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
         Ball nearest = null;
         float minDist = Mathf.Infinity;
 

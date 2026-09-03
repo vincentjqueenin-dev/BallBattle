@@ -6,8 +6,9 @@ public class SwordWeapon : MonoBehaviour
     public Transform weaponPivot;
 
     [Header("Spin Settings")]
-    public float baseRotationSpeed = 360f; // Faster starting spin speed
-    public float speedScaleFactor = 0.5f;
+    public float baseRotationSpeed = 360f;
+    public float speedPerDamagePoint = 15f; // Extra degrees/sec gained per damage point accrued
+    public float maxRotationSpeed = 900f;   // Visual cap so it doesn't become a blurry drill
     private float rotationDirection = 1f;
 
     private float nextAttackTime = 0f;
@@ -23,15 +24,19 @@ public class SwordWeapon : MonoBehaviour
 
     private void Start()
     {
-        baseRotationSpeed = Random.Range(320f, 420f); // Fast initial spin
+        baseRotationSpeed = Random.Range(320f, 380f);
     }
 
     private void Update()
     {
         if (parentBall == null || parentBall.isDead) return;
 
-        // Dynamically accelerate spin relative to current damage multiplier
-        float currentSpeed = baseRotationSpeed * (1f + (parentBall.currentMultiplier - 1f) * speedScaleFactor);
+        // Calculate extra speed gained from accrued compound damage (above base 5.0)
+        float accruedDamage = Mathf.Max(0f, parentBall.currentDamage - 5.0f);
+        float currentSpeed = baseRotationSpeed + (accruedDamage * speedPerDamagePoint);
+
+        // Clamp to prevent uncontrollable visual artifacts
+        currentSpeed = Mathf.Min(currentSpeed, maxRotationSpeed);
 
         if (weaponPivot != null)
         {
@@ -46,7 +51,7 @@ public class SwordWeapon : MonoBehaviour
 
     private void OnTriggerEnter2D(Collider2D collision)
     {
-        if (collision.CompareTag("Sword") || collision.CompareTag("Arrow"))
+        if (collision.CompareTag("Sword") || collision.CompareTag("Arrow") || collision.CompareTag("Spear"))
         {
             ReverseRotation();
             return;
@@ -63,8 +68,11 @@ public class SwordWeapon : MonoBehaviour
                 nextAttackTime = Time.time + ATTACK_COOLDOWN;
                 ReverseRotation();
 
-                float damage = parentBall.CalculateSwordDamage();
-                target.TakeDamage(damage);
+                float damageToDeal = parentBall.CalculateSwordDamage();
+                bool isCrit = parentBall.RollCrit(5f);
+                if (isCrit) damageToDeal *= 2f;
+
+                target.TakeDamage(damageToDeal, isCrit);
             }
         }
     }

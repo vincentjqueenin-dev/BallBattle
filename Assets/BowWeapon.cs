@@ -64,8 +64,13 @@ public class BowWeapon : MonoBehaviour
                 {
                     arrow.owner = parentBall;
 
-                    // OVERRIDE DEFULT DAMAGE: Fetch scaled damage directly from BowBall!
-                    arrow.damage = parentBall.GetCalculatedArrowDamage();
+                    // Fetch base damage & calculate crit chance based on arrow count milestone
+                    float baseDmg = parentBall.GetCalculatedArrowDamage();
+                    float critChance = parentBall.GetCalculatedCritChance();
+                    bool isCrit = parentBall.RollCrit(critChance);
+
+                    arrow.damage = isCrit ? baseDmg * 2f : baseDmg;
+                    arrow.isCrit = isCrit;
                 }
 
                 Rigidbody2D arrowRb = arrowObj.GetComponent<Rigidbody2D>();

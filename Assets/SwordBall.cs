@@ -11,14 +11,7 @@ public class SwordBall : Ball
 
     protected override void DecideNextState()
     {
-        if (currentHealth < 25f)
-        {
-            currentState = (Random.value > 0.5f) ? CombatState.Evasive : CombatState.Defensive;
-        }
-        else
-        {
-            currentState = CombatState.Aggressor;
-        }
+        currentState = CombatState.Aggressor;
     }
 
     public float CalculateSwordDamage()
